@@ -4,7 +4,8 @@
   "description": "web wechat lib for user",
   "main": "lib/wechat.js",
   "scripts": {
-    "work": "webpack --config=./work/webpack.config.js && cross-env DEBUG=wechat,wxbot,app babel-node --debug ./work/app.js",
+    "work": "webpack --config=./work/webpack.config.js && cross-env DEBUG=wechat,wxbot,app babel-node ./work/app.js",
+    "debug": "webpack --config=./work/webpack.config.js && cross-env DEBUG=wechat,wxbot,app babel-node-debug ./work/app.js",
     "compile": "babel src -d lib -s",
     "prepublish": "npm run compile",
     "lint": "eslint src example/lib example/routes example/app.js",
@@ -43,6 +44,7 @@
     "babel-core": "^6.0.0",
     "babel-loader": "^6.0.0",
     "babel-plugin-transform-runtime": "^6.15.0",
+    "babel-preset-es2017": "^6.16.0",
     "babel-preset-latest": "^6.16.0",
     "babel-register": "^6.16.3",
     "chai": "^3.5.0",

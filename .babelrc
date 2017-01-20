@@ -1,0 +1,22 @@
+{
+  "env": {
+    "development": {
+      "presets": ["latest"],
+      "plugins": [
+        ["transform-runtime", {
+          "polyfill": false,
+          "regenerator": true
+        }]
+      ]
+    },
+    "production": {
+      "presets": ["latest"],
+      "plugins": [
+        ["transform-runtime", {
+          "polyfill": false,
+          "regenerator": true
+        }]
+      ]
+    }
+  }
+}
