@@ -4,7 +4,19 @@ const debug = require('debug')('wxbot')
 const QRCode = require('qrcode')
 const fs = require('fs')
 const path = require('path')
+const FormData = require('form-data')
+const request = require('request')
+const _ = require('underscore')
 
+const MongoClient = require('mongodb').MongoClient
+const mongoUrl = 'mongodb://localhost:27017/uuke'
+let DB = undefined
+const FILE_SERVER_REMOTE = "http://uuke.co:8100"
+
+MongoClient.connect(mongoUrl, function(err, db) {
+  if (err === null) DB = db
+  else debug('connect to ' + mongoUrl + ' err: ' + err)
+})
 
 class WxBot extends Wechat {
 
@@ -15,11 +27,31 @@ class WxBot extends Wechat {
 
     this.replyUsers = new Set()
     this.on('message', msg => {
-      if (msg.msgType != 51) {
-        debug(msg)
-      }
-      if (msg.MsgType === this.CONF.MSGTYPE_TEXT) {
-        this._botReply(msg)
+      switch (msg.MsgType) {
+        case this.CONF.MSGTYPE_IMAGE:
+          this.onImageMsg(msg)
+          break
+        case this.CONF.MSGTYPE_VOICE:
+          this.onAudioMsg(msg)
+          break
+        case this.CONF.MSGTYPE_VIDEO:
+          this.onVideoMsg(msg)
+          break
+        case this.CONF.MSGTYPE_TEXT:
+          this._botReply(msg)
+          break
+        case this.CONF.MSGTYPE_VERIFYMSG:
+          this._botVerifyUser(msg)
+          break
+        case this.CONF.MSGTYPE_STATUSNOTIFY:
+          this._botSupervise()
+          break
+        case 10000:
+          this._botInvitationAccepted(msg)
+          break
+        default:
+          debug('======> please add msg handler for type: ' + msg.MsgType)
+          break
       }
     })
 
@@ -94,12 +126,95 @@ class WxBot extends Wechat {
     }
   }
 
+  onImageMsg (msg) {
+
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "ImgWidth", "ImgHeight")
+    persist.FromNickName = this.contacts[msg.FromUserName].NickName;
+    
+    let collection = DB.collection('wxmsgs')
+    collection.insertOne(persist).then(ret => {
+      return this.getMsgImg(msg.MsgId)
+    }).then(data =>  {
+      return this._saveWXfiles(data, persist.MsgId)
+    }).then(url => {
+      collection.updateOne({MsgId: persist.MsgId}, {"$set":{"url":url}}).then(ret => {
+        debug(persist.MsgId + " store image with url:" + url)
+      })
+    })
+  }
+
+  onAudioMsg(msg) {
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "VoiceLength", "Url")
+    persist.FromNickName = this.contacts[msg.FromUserName].NickName;
+
+    let collection = DB.collection('wxmsgs')
+    collection.insertOne(persist).then(ret => {
+      return this.getVoice(msg.MsgId)
+    }).then(data =>  {
+      return this._saveWXfiles(data, persist.MsgId)
+    }).then(url => {
+      collection.updateOne({MsgId: persist.MsgId}, {"$set":{"url":url}}).then(ret => {
+        debug(persist.MsgId + " store audio with url:" + url)
+      })
+    })
+
+  }
+
+  onVideoMsg(msg) {
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "PlayLength", "Url")
+    persist.FromNickName = this.contacts[msg.FromUserName].NickName;
+
+    let collection = DB.collection('wxmsgs')
+    collection.insertOne(persist).then(ret => {
+      return this.getVideo(msg.MsgId)
+    }).then(data =>  {
+      return this._saveWXfiles(data, persist.MsgId)
+    }).then(url => {
+      collection.updateOne({MsgId: persist.MsgId}, {"$set":{"url":url}}).then(ret => {
+        debug(persist.MsgId + " store video with url:" + url)
+      })
+    })
+  }
+
+
   _botSupervise () {
     const message = '我的主人玩微信' + ++this.openTimes + '次啦！'
     for (let user of this.superviseUsers.values()) {
       this.sendMsg(message, user)
       debug(message)
     }
+  }
+
+  _saveWXfiles(res, MsgId) {
+    console.log(res.type);
+    var ext = undefined
+    if (res.type.startsWith('image') || res.type.startsWith('audio')) {
+      ext = res.type.substring(6)
+    }
+    if (res.type.startsWith('video')) {
+      ext = "mp4"
+    }
+    return new Promise((resolve, reject) => {
+      var filename = MsgId + '.' + ext
+      var req = request.post(FILE_SERVER_REMOTE + '/php/upload.php', function(err, resp, body) {
+        if (err) { 
+          console.log('_saveWXFiles failure:')
+          reject(err);
+        } else {
+          console.log('_saveWXFiles success:')
+          var res = JSON.parse(body);
+          var url = FILE_SERVER_REMOTE + '/' + res.file_path
+          resolve(url);
+
+        }
+      })
+      var form = req.form(); 
+      form.append('file', res.data, {
+        filename: filename,
+        contentType: res.type
+      })
+    })
+
   }
 
 }
