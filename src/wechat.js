@@ -151,7 +151,7 @@ class Wechat extends WechatCore {
       return
     }
     if (data.AddMsgCount) {
-      debug(data)
+      // debug(data)
       debug('syncPolling messages count: ', data.AddMsgCount)
       this.handleMsg(data.AddMsgList)
     }
@@ -163,6 +163,7 @@ class Wechat extends WechatCore {
 
   handleMsg (data) {
     data.forEach(msg => {
+      debug(msg)
       Promise.resolve().then(() => {
         if (!this.contacts[msg.FromUserName]) {
           return this.batchGetContact([{

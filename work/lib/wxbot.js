@@ -7,6 +7,7 @@ const path = require('path')
 const FormData = require('form-data')
 const request = require('request')
 const _ = require('underscore')
+var headIconCache = require('memory-cache');
 
 const MongoClient = require('mongodb').MongoClient
 const mongoUrl = 'mongodb://localhost:27017/uuke'
@@ -29,16 +30,10 @@ class WxBot extends Wechat {
     this.on('message', msg => {
       switch (msg.MsgType) {
         case this.CONF.MSGTYPE_IMAGE:
-          this.onImageMsg(msg)
-          break
         case this.CONF.MSGTYPE_VOICE:
-          this.onAudioMsg(msg)
-          break
         case this.CONF.MSGTYPE_VIDEO:
-          this.onVideoMsg(msg)
-          break
         case this.CONF.MSGTYPE_TEXT:
-          this._botReply(msg)
+          this.onMsg(msg);
           break
         case this.CONF.MSGTYPE_VERIFYMSG:
           this._botVerifyUser(msg)
@@ -111,7 +106,41 @@ class WxBot extends Wechat {
     }) 
   }
 
-  _botReply (msg) {
+  onMsg(msg) {
+    var _this = this
+    new Promise((resolve, reject) => {
+      var from = msg.FromGroupMemberName || msg.FromUserName
+      var headIcon = headIconCache.get(from)
+      if (headIcon) {
+        resolve(headIcon)
+        return
+      } else {
+        this.getHeadIcon(from).then(data =>  {
+          return _this._saveWXfiles(data, from)
+        }).then(url => {
+          debug(url)
+          headIconCache.put(from, url, 24*3600*1000)
+          resolve(url)
+        })
+      }
+    }).then(fromHeadIcon => {
+      msg.fromHeadIcon = fromHeadIcon
+      if (msg.MsgType == this.CONF.MSGTYPE_TEXT) {
+        this.onTextMsg(msg);
+      }
+      if (msg.MsgType == this.CONF.MSGTYPE_IMAGE) {
+        this.onImageMsg(msg);
+      }
+      if (msg.MsgType == this.CONF.MSGTYPE_VOICE) {
+        this.onAudioMsg(msg);
+      }
+      if (msg.MsgType == this.CONF.MSGTYPE_VIDEO) {
+        this.onVideoMsg(msg);
+      }
+    })
+  }
+
+  onTextMsg(msg) {
     if (msg.OriginalContent.endsWith('code')) {
       this._generateQrMsg('http://weixin.qq.com/r/4FdVTXPEDi5xrTcu9wLy').then((pic) => {
         this.sendMsg(pic, msg['FromUserName'])
@@ -127,10 +156,9 @@ class WxBot extends Wechat {
   }
 
   onImageMsg (msg) {
-
-    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "ImgWidth", "ImgHeight")
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "ImgWidth", "ImgHeight", "fromHeadIcon")
     persist.FromNickName = this.contacts[msg.FromUserName].NickName;
-    
+
     let collection = DB.collection('wxmsgs')
     collection.insertOne(persist).then(ret => {
       return this.getMsgImg(msg.MsgId)
@@ -144,7 +172,7 @@ class WxBot extends Wechat {
   }
 
   onAudioMsg(msg) {
-    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "VoiceLength", "Url")
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "VoiceLength", "Url", "fromHeadIcon")
     persist.FromNickName = this.contacts[msg.FromUserName].NickName;
 
     let collection = DB.collection('wxmsgs')
@@ -161,7 +189,7 @@ class WxBot extends Wechat {
   }
 
   onVideoMsg(msg) {
-    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "PlayLength", "Url")
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "PlayLength", "Url", "fromHeadIcon")
     persist.FromNickName = this.contacts[msg.FromUserName].NickName;
 
     let collection = DB.collection('wxmsgs')

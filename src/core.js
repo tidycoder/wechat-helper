@@ -808,6 +808,30 @@ export default class WechatCore {
     })
   }
 
+  getHeadIcon(userName) {
+    return Promise.resolve().then(() => {
+      let params = {
+        seq: 1,
+        username: userName,
+        skey: this.PROP.skey
+      }
+      return this.request({
+        method: 'GET',
+        url: this.CONF.API_webwxgeticon,
+        responseType: 'arraybuffer',
+        params: params
+      }).then(res => {
+        return {
+          data: res.data,
+          type: res.headers['content-type']
+        }
+      })
+    }).catch(err => {
+      debug(err)
+      throw new Error('获取头像失败')
+    })
+  }
+
   verifyUser (UserName, Ticket) {
     return Promise.resolve().then(() => {
       let params = {

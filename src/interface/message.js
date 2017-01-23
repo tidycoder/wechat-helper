@@ -41,6 +41,10 @@ const messageProto = {
         let user = instance.contacts[this.FromUserName].MemberList.find(member => {
           return member.UserName === match
         })
+        this.FromGroupMemberName = match;
+        this.FromGroupMemberHeadImg = user ? user.HeadImgUrl : ""
+        console.log(this.FromGroupMemberName)
+        console.log(this.FromGroupMemberHeadImg)
         return user ? instance.Contact.getDisplayName(user) : match
       })
     }
