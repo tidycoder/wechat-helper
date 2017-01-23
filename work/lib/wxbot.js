@@ -119,7 +119,7 @@ class WxBot extends Wechat {
           return _this._saveWXfiles(data, from)
         }).then(url => {
           debug(url)
-          headIconCache.put(from, url, 24*3600*1000)
+          headIconCache.put(from, url)
           resolve(url)
         })
       }
@@ -141,23 +141,35 @@ class WxBot extends Wechat {
   }
 
   onTextMsg(msg) {
-    if (msg.OriginalContent.endsWith('code')) {
-      this._generateQrMsg('http://weixin.qq.com/r/4FdVTXPEDi5xrTcu9wLy').then((pic) => {
-        this.sendMsg(pic, msg['FromUserName'])
-      })
-    }
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "fromHeadIcon")
+    if (!msg.isSendBySelf)
+      persist.FromNickName = this.contacts[msg.FromUserName].NickName
+    else 
+      persist.FromNickName = this.user.NickName
 
-    if (this.replyUsers.has(msg['FromUserName'])) {
-      this._tuning(msg['Content']).then(reply => {
-        this.sendText(reply, msg['FromUserName'])
-        debug(reply)
-      })
-    }
+    let collection = DB.collection('wxmsgs')
+    collection.insertOne(persist)
+
+    // if (msg.OriginalContent.endsWith('code')) {
+    //   this._generateQrMsg('http://weixin.qq.com/r/4FdVTXPEDi5xrTcu9wLy').then((pic) => {
+    //     this.sendMsg(pic, msg['FromUserName'])
+    //   })
+    // }
+
+    // if (this.replyUsers.has(msg['FromUserName'])) {
+    //   this._tuning(msg['Content']).then(reply => {
+    //     this.sendText(reply, msg['FromUserName'])
+    //     debug(reply)
+    //   })
+    // }
   }
 
   onImageMsg (msg) {
     let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "ImgWidth", "ImgHeight", "fromHeadIcon")
-    persist.FromNickName = this.contacts[msg.FromUserName].NickName;
+    if (!msg.isSendBySelf)
+      persist.FromNickName = this.contacts[msg.FromUserName].NickName
+    else 
+      persist.FromNickName = this.user.NickName
 
     let collection = DB.collection('wxmsgs')
     collection.insertOne(persist).then(ret => {
@@ -173,7 +185,10 @@ class WxBot extends Wechat {
 
   onAudioMsg(msg) {
     let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "VoiceLength", "Url", "fromHeadIcon")
-    persist.FromNickName = this.contacts[msg.FromUserName].NickName;
+    if (!msg.isSendBySelf)
+      persist.FromNickName = this.contacts[msg.FromUserName].NickName
+    else 
+      persist.FromNickName = this.user.NickName
 
     let collection = DB.collection('wxmsgs')
     collection.insertOne(persist).then(ret => {
@@ -190,7 +205,10 @@ class WxBot extends Wechat {
 
   onVideoMsg(msg) {
     let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "PlayLength", "Url", "fromHeadIcon")
-    persist.FromNickName = this.contacts[msg.FromUserName].NickName;
+    if (!msg.isSendBySelf)
+      persist.FromNickName = this.contacts[msg.FromUserName].NickName
+    else 
+      persist.FromNickName = this.user.NickName
 
     let collection = DB.collection('wxmsgs')
     collection.insertOne(persist).then(ret => {
