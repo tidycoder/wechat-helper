@@ -10,7 +10,7 @@ const _ = require('underscore')
 var headIconCache = require('memory-cache');
 
 const MongoClient = require('mongodb').MongoClient
-const mongoUrl = 'mongodb://localhost:27017/uuke'
+const mongoUrl = 'mongodb://develop:37017/uuke'
 let DB = undefined
 const FILE_SERVER_REMOTE = "http://uuke.co:8100"
 
@@ -109,7 +109,10 @@ class WxBot extends Wechat {
   onMsg(msg) {
     var _this = this
     new Promise((resolve, reject) => {
-      var from = msg.FromGroupMemberName || msg.FromUserName
+      var from = msg.FromUserName;
+      if (msg.FromGroup) {
+        from = msg.FromGroupMember
+      } 
       var headIcon = headIconCache.get(from)
       if (headIcon) {
         resolve(headIcon)
@@ -141,7 +144,7 @@ class WxBot extends Wechat {
   }
 
   onTextMsg(msg) {
-    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "fromHeadIcon")
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "fromHeadIcon", "FromGroup", "FromGroupMemberName", "FromGroupName")
     if (!msg.isSendBySelf)
       persist.FromNickName = this.contacts[msg.FromUserName].NickName
     else 
@@ -165,7 +168,7 @@ class WxBot extends Wechat {
   }
 
   onImageMsg (msg) {
-    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "ImgWidth", "ImgHeight", "fromHeadIcon")
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "Url", "ImgWidth", "ImgHeight", "fromHeadIcon", "FromGroup", "FromGroupMemberName", "FromGroupName")
     if (!msg.isSendBySelf)
       persist.FromNickName = this.contacts[msg.FromUserName].NickName
     else 
@@ -184,7 +187,7 @@ class WxBot extends Wechat {
   }
 
   onAudioMsg(msg) {
-    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "VoiceLength", "Url", "fromHeadIcon")
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "VoiceLength", "Url", "fromHeadIcon", "FromGroup", "FromGroupMemberName", "FromGroupName")
     if (!msg.isSendBySelf)
       persist.FromNickName = this.contacts[msg.FromUserName].NickName
     else 
@@ -204,7 +207,7 @@ class WxBot extends Wechat {
   }
 
   onVideoMsg(msg) {
-    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "PlayLength", "Url", "fromHeadIcon")
+    let persist = _.pick(msg, "MsgId", "MsgType", "Content", "isSendBySelf", "CreateTime", "PlayLength", "Url", "fromHeadIcon", "FromGroup", "FromGroupMemberName", "FromGroupName")
     if (!msg.isSendBySelf)
       persist.FromNickName = this.contacts[msg.FromUserName].NickName
     else 

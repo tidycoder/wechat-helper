@@ -41,12 +41,18 @@ const messageProto = {
         let user = instance.contacts[this.FromUserName].MemberList.find(member => {
           return member.UserName === match
         })
-        this.FromGroupMemberName = match;
-        this.FromGroupMemberHeadImg = user ? user.HeadImgUrl : ""
-        console.log(this.FromGroupMemberName)
-        console.log(this.FromGroupMemberHeadImg)
+        this.FromGroupMember = match
+        this.FromGroupMemberName = user ? instance.Contact.getDisplayName(user) : match
+        this.FromGroup = true
+        this.FromGroupName = instance.contacts[this.FromUserName].NickName
         return user ? instance.Contact.getDisplayName(user) : match
       })
+    }
+    if (this.isSendBySelf && this.ToUserName.indexOf('@@') === 0) {
+      this.FromGroupMember = instance.user.UserName
+      this.FromGroupMemberName = instance.user.NickName 
+      this.FromGroup = true
+      this.FromGroupName = instance.contacts[this.ToUserName].NickName
     }
 
     this.Content = this.Content.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<br\/>/g, '\n')
